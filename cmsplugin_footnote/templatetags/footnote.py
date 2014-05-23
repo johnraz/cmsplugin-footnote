@@ -1,4 +1,5 @@
 # coding: utf-8
+from django.db import models
 from django.template import Library
 
 from cms.models.fields import PlaceholderField
@@ -24,7 +25,7 @@ def footnote_list(context, obj=None):
     if isinstance(obj, Page):
         footnotes = get_footnotes_for_object(request, obj)
 
-    else:
+    elif isinstance(obj, models.Model):
         for field in obj._meta.fields:
             if isinstance(field, PlaceholderField):
                 footnotes |= get_footnotes_for_object(request, getattr(obj, field.name))

@@ -30,16 +30,14 @@ class FootnotePlugin(TextPlugin):
                                                      placeholder_name)
 
         request = context['request']
-
         footnotes = list(get_footnotes_for_object(request, instance.placeholder))
         context['counter'] = footnotes.index(instance) + 1
         return context
 
     def save_model(self, request, obj, form, change):
         super(FootnotePlugin, self).save_model(request, obj, form, change)
-
-        delete_cache_key(self.placeholder._get_attached_objects()[0] if self.placeholder.page_id is None
-                            else self.placeholder.page)
+        delete_cache_key(self.placeholder.page if self.placeholder.page
+                            else self.placeholder._get_attached_objects()[0])
 
 
 plugin_pool.register_plugin(FootnotePlugin)

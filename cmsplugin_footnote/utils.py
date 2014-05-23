@@ -1,11 +1,10 @@
 # coding: utf-8
-from cms.models.pagemodel import Page
 from django.core.cache import cache
+from django.db.models import Model
 
+from cms.models.pagemodel import Page
 from cms.models.pluginmodel import CMSPlugin
 from cms.utils.plugins import downcast_plugins, get_plugins_for_page
-from cms.utils.moderator import get_cmsplugin_queryset
-from django.db.models import Model
 from djangocms_text_ckeditor.utils import plugin_tags_to_id_list
 
 from .models import Footnote
@@ -43,17 +42,17 @@ def get_footnotes_for_object(request, instance=None):
     instance is either a placeholder instance or a page instance.
     '''
 
-    plugins = []
-
     if isinstance(instance, Page):
         plugins = get_plugins_for_page(request, instance)
         cache_key = get_cache_key(instance, plugins)
-    elif instance.page:
+    elif isinstance(instance.page, Page):
         plugins = get_plugins_for_page(request, instance.page)
         cache_key = get_cache_key(instance.page, plugins)
     elif isinstance(instance, Model):
         plugins = instance.get_plugins()
         cache_key = get_cache_key(instance, plugins)
+    else:
+        raise ValueError('Instance must either be a placeholder or a page instance!')
 
     footnote_ids = cache.get(cache_key)
 

@@ -1,11 +1,13 @@
 # coding: utf-8
 
-from cms.plugins.text.cms_plugins import TextPlugin
-from .models import Footnote
 from django.utils.translation import ugettext_lazy as _
 from django.conf import settings
-from .utils import get_footnotes_for_page
+
 from cms.plugin_pool import plugin_pool
+from djangocms_text_ckeditor.cms_plugins import TextPlugin
+
+from .models import Footnote
+from .utils import get_footnotes_for_object
 from .utils import delete_cache_key
 
 
@@ -16,26 +18,28 @@ class FootnotePlugin(TextPlugin):
     text_enabled = True
     admin_preview = False
 
-    def get_editor_widget(self, request, plugins):
+    def get_editor_widget(self, request, plugins, pk,  placeholder, language):
         plugins.remove(FootnotePlugin)
-        return super(FootnotePlugin, self).get_editor_widget(request, plugins)
+        return super(FootnotePlugin, self).get_editor_widget(request, plugins, pk, placeholder, language)
 
-    @staticmethod
-    def icon_src(self):
+    def icon_src(self, instance):
         return settings.STATIC_URL + 'icons/footnote_symbol.png'
 
     def render(self, context, instance, placeholder_name):
         context = super(FootnotePlugin, self).render(context, instance,
                                                      placeholder_name)
+
         request = context['request']
-        page = request.current_page
-        footnotes = list(get_footnotes_for_page(request, page))
+
+        footnotes = list(get_footnotes_for_object(request, instance.placeholder))
         context['counter'] = footnotes.index(instance) + 1
         return context
 
-    def save_model(self, *args, **kwargs):
-        super(FootnotePlugin, self).save_model(*args, **kwargs)
-        delete_cache_key(self.placeholder.page)
+    def save_model(self, request, obj, form, change):
+        super(FootnotePlugin, self).save_model(request, obj, form, change)
+
+        delete_cache_key(self.placeholder.page if self.placeholder.page
+                         else self.placeholder._get_attached_objects()[0])
 
 
 plugin_pool.register_plugin(FootnotePlugin)

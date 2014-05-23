@@ -1,16 +1,32 @@
 # coding: utf-8
+from cms.models.fields import PlaceholderField
+from cms.models.pagemodel import Page
 
 from django.template import Library
-from ..utils import get_footnotes_for_page
+from cmsplugin_footnote.models import Footnote
+from ..utils import get_footnotes_for_object
 
 register = Library()
 
 
 @register.inclusion_tag('cmsplugin_footnote/footnote_list.html',
                         takes_context=True)
-def footnote_list(context, page=None):
+def footnote_list(context, obj=None):
+    """
+    obj is a model instance that should be checked upon any placeholder field
+    """
     request = context['request']
-    if page is None:
-        page = request.current_page
-    context['footnotes'] = get_footnotes_for_page(request, page)
+    footnotes = Footnote.objects.none()
+    if obj is None:
+        obj = request.current_page
+
+    if isinstance(obj, Page):
+        footnotes = get_footnotes_for_object(request, obj)
+
+    else:
+        for field in obj._meta.fields:
+            if isinstance(field, PlaceholderField):
+                footnotes = footnotes | get_footnotes_for_object(request, getattr(obj, field.name))
+
+    context['footnotes'] = footnotes
     return context

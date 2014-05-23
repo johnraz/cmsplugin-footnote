@@ -1,18 +1,20 @@
 # coding: utf-8
-
+from cms.models.pagemodel import Page
 from django.core.cache import cache
+
+from cms.models.pluginmodel import CMSPlugin
+from cms.utils.plugins import downcast_plugins, get_plugins_for_page
 from cms.utils.moderator import get_cmsplugin_queryset
-from cms.plugins.text.utils import plugin_tags_to_id_list
-from cms.plugins.utils import downcast_plugins
-from cms.models import CMSPlugin
-from cmsplugin_footnote.models import Footnote
+from django.db.models import Model
+from djangocms_text_ckeditor.utils import plugin_tags_to_id_list
+
+from .models import Footnote
 from .settings import CMSPLUGIN_FOOTNOTE_DEBUG
 
 
-def get_cache_key(page, plugins):
+def get_cache_key(obj, placeholder_plugins):
     return 'footnote_plugins__%d_%d' \
-            % (page.pk, plugins.filter(placeholder__page=page,
-                                       plugin_type='FootnotePlugin').count())
+            % (obj.pk, placeholder_plugins.filter(plugin_type='FootnotePlugin').count())
 
 
 def delete_cache_key(page):
@@ -35,16 +37,28 @@ def plugin_iterator_from_text_plugin(text_plugin):
                 raise e
 
 
-def get_footnotes_for_page(request, page):
+def get_footnotes_for_object(request, instance=None):
     '''
-    Gets the Footnote instances for `page`, with the correct order.
+    Gets the Footnote instances for `objects` and `page`, with the correct order.
+    instance is either a placeholder instance or a page instance.
     '''
-    plugins = get_cmsplugin_queryset(request)
-    cache_key = get_cache_key(page, plugins)
+
+    plugins = []
+
+    if isinstance(instance, Page):
+        plugins = get_plugins_for_page(request, instance)
+        cache_key = get_cache_key(instance, plugins)
+    elif instance.page:
+        plugins = get_plugins_for_page(request, instance.page)
+        cache_key = get_cache_key(instance.page, plugins)
+    elif isinstance(instance, Model):
+        plugins = instance.get_plugins()
+        cache_key = get_cache_key(instance, plugins)
+
     footnote_ids = cache.get(cache_key)
+
     if footnote_ids is None:
         root_footnote_and_text_plugins = plugins.filter(
-                placeholder__page=page,
                 plugin_type__in=('FootnotePlugin', 'TextPlugin'),
                 parent=None
             ).order_by('position')
@@ -63,5 +77,5 @@ def get_footnotes_for_page(request, page):
                     if plugin_is_footnote(plugin):
                         footnote_plugins__append(plugin)
         footnote_ids = tuple(f.pk for f in downcast_plugins(footnote_plugins))
-        cache.set(cache_key, footnote_ids   )
+        cache.set(cache_key, footnote_ids)
     return Footnote.objects.filter(pk__in=footnote_ids)

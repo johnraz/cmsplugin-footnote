@@ -5,6 +5,8 @@ from django.db.models import Model
 from cms.models.pagemodel import Page
 from cms.models.pluginmodel import CMSPlugin
 from cms.utils.plugins import downcast_plugins, get_plugins_for_page
+
+from djangocms_text_ckeditor.models import Text
 from djangocms_text_ckeditor.utils import plugin_tags_to_id_list
 
 from .models import Footnote
@@ -27,13 +29,17 @@ def plugin_is_footnote(plugin):
 
 
 def plugin_iterator_from_text_plugin(text_plugin):
-    plugin_pk_list = plugin_tags_to_id_list(text_plugin.body)
-    for pk in plugin_pk_list:
-        try:
-            yield CMSPlugin.objects.get(pk=pk)
-        except CMSPlugin.DoesNotExist, e:
-            if CMSPLUGIN_FOOTNOTE_DEBUG:
-                raise e
+    try:
+        plugin_pk_list = plugin_tags_to_id_list(text_plugin.text.body)
+        for pk in plugin_pk_list:
+            try:
+                yield CMSPlugin.objects.get(pk=pk)
+            except CMSPlugin.DoesNotExist, e:
+                if CMSPLUGIN_FOOTNOTE_DEBUG:
+                    raise e
+    except Text.DoesNotExist as e:
+        # Deal with empty text_plugin case.
+        pass
 
 
 def get_footnotes_for_object(request, instance=None):

@@ -19,7 +19,8 @@ def get_cache_key(obj, placeholder_plugins):
 
 
 def delete_cache_key(page):
-    plugins = CMSPlugin.objects.all()
+    #TODO page should probably be either a page or a model obj
+    plugins = CMSPlugin.objects.all() #TODO this should probably be done in the same way as line 50
     cache_key = get_cache_key(page, plugins)
     cache.delete(cache_key)
 
@@ -51,7 +52,7 @@ def get_footnotes_for_object(request, instance=None):
     if isinstance(instance, Page):
         plugins = get_plugins_for_page(request, instance)
         cache_key = get_cache_key(instance, plugins)
-    elif isinstance(instance.page, Page):
+    elif getattr(instance, 'page', False) and isinstance(instance.page, Page):
         plugins = get_plugins_for_page(request, instance.page)
         cache_key = get_cache_key(instance.page, plugins)
     elif isinstance(instance, Model):

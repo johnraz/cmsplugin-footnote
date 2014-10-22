@@ -27,7 +27,7 @@ def footnote_list(context, obj=None):
 
     elif isinstance(obj, models.Model):
         for field in obj._meta.fields:
-            if isinstance(field, PlaceholderField):
+            if isinstance(field, PlaceholderField) and getattr(obj, field.name):
                 footnotes |= get_footnotes_for_object(request, getattr(obj, field.name))
 
     context['footnotes'] = footnotes
